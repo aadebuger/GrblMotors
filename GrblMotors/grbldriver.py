@@ -21,7 +21,7 @@ class GrblDriver:
     """
     
     def __init__(self):
-        self.ser = serial.Serial('/dev/ttyACM0',baudrate=115200,timeout=0.01)
+        self.ser = serial.Serial('/dev/cu.wchusbserial14440',baudrate=115200,timeout=1)
         self.waittimeout = 0.01
 
         #initialize and wait for grbl to wake up
@@ -188,6 +188,7 @@ class GrblDriver:
         i = 0
         while i < maxreads:
             msg = self.ser.readline()
+            print("msg",msg)
             if msg == b'':
                 break
             resp.append(msg.decode().strip())
@@ -230,9 +231,14 @@ class GrblDriver:
         time.sleep(self.waittimeout)
         resp = self._read_buffer()
         self.check_alarm(resp)
-        
+        print("resp",resp)
         assert re.match(r'\<.*\>',resp[0]) is not None, 'Error reading status report'
-        resp = resp[0].strip('<>').split('|')
+        respstr= resp[0]
+        respstr= respstr.replace(",M","|M")
+        respstr = respstr.replace(",W","|W")
+        respstr= respstr.replace(",S","|S")
+        resp = respstr.strip('<>').split('|')
+        print("resp1",resp)
         state = resp.pop(0)
         status = {}
         for r in resp:
@@ -249,6 +255,8 @@ class GrblDriver:
     def get_positions(self):
         """Request status and return positions in a dict"""
         state, status = self.get_status_report()
+        print("state",state)
+        print("status",status)
         posre = re.compile(r'(-?\d*\.\d*),(-?\d*\.\d*),(-?\d*\.\d*)')
         positions = [float(x) for x in posre.match(status['MPos']).groups()]
         configs = (self.xconfig,self.yconfig,self.zconfig)
